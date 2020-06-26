@@ -36,7 +36,6 @@ public:
         x = 15;
         y = 11;
         ch = 1;
-        cmps = 7;
         exit = false;
         snake = new Snake(x, y, 2);
         pray.Reset();
@@ -84,8 +83,8 @@ public:
             case 's': screen.b--; screen.print_border(); break;
             case 'd': screen.r++; screen.print_border(); break;
             case 'a': screen.r--; screen.print_border(); break;
-            case 49: cmps /= 1.1f;                       break;
-            case 50: cmps *= 1.1f;                       break;
+            //case 49: cmps /= 1.1f;                       break;
+            //case 50: cmps *= 1.1f;                       break;
             case ' ': debug_screen = !debug_screen; clear = !debug_screen;   break;
             }
             if (debug_screen)
@@ -138,8 +137,16 @@ public:
     }
 
 
-    void Play()
+    void Play(int level)
     {
+        cmps = 7;
+        switch (level)
+        {
+        case 0: cmps = 4;  break;
+        case 1: cmps = 7;  break;
+        case 2: cmps = 10; break;
+        case 3: cmps = 15; break;
+        }
         screen.print_border();
         Reset();
         while (exit == false)
@@ -162,7 +169,6 @@ public:
         while (_getch() != 27)
         {
         }
-
     }
 
 private:

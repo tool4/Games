@@ -52,10 +52,18 @@ public:
         return EXIT;
     }
 
-    int ShowHighscores()
+    int ShowHighscores(int level)
     {
+        std::string label = "HIGHSCORES - ";
+        switch (level)
+        {
+        case 0: label += "EASY"; break;
+        case 1: label += "NORMAL"; break;
+        case 2: label += "HARD"; break;
+        case 3: label += "INSANE"; break;
+        }
         screen.print_border();
-        screen.StatusM(14, 5, "HIGHSCORES");
+        screen.StatusM(10, 5, label.c_str());
         screen.StatusM(10, 6, "________________");
         screen.StatusM(10, 7, "Empty");
         screen.StatusM(10, 8, "Empty");
@@ -63,6 +71,41 @@ public:
 
         int c = _getch();
         return MENU;
+    }
+
+    int ShowLevels()
+    {
+        screen.print_border();
+        screen.StatusM(14,  5, "Select level");
+        screen.StatusM(10,  6, "________________");
+        screen.StatusM(10,  7, "Easy");
+        screen.StatusM(10,  8, "Normal");
+        screen.StatusM(10,  9, "Hard");
+        screen.StatusM(10, 10, "Insane");
+
+        x = 10;
+        y = 9;
+        gotoxy(x, y);
+        int c = _getch();
+        bool exit = false;
+        while (!exit)
+        {
+            int c = _getch();
+            switch (c)
+            {
+            case 27: status = EXIT; break;
+            case 80: y++;    break; // DOWN
+            case 72: y--;  break; // UP
+            case 10: exit = true;  break;
+            case 13: exit = true; break;
+            }
+            if (y > 11)
+                y = 8;
+            if (y < 8)
+                y = 11;
+            gotoxy(x, y);
+        }
+        return y - 8;
     }
 
 private:

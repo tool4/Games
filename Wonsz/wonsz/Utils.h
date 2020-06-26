@@ -21,6 +21,7 @@ enum STATUS
 {
     MENU,
     PLAY,
+    LEVEL,
     HIGHSCORES,
     EXIT
 };
