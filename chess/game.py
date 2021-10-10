@@ -21,7 +21,8 @@ BOARD_SIZE  = 800
 FIELD_SIZE  = int(BOARD_SIZE/8)
 SIDE_SIZE   = 50
 BORDER_SIZE = 2
-WHITE       = (255,255,255)
+WHITE       = (255, 255, 255)
+GREEN       = (0,   255, 0)
 
 pygame.font.init()
 myfont = pygame.font.SysFont('Comic Sans MS', 30)
@@ -32,6 +33,7 @@ pygame.init()
 
 bg_white = pygame.image.load("img/light_board.png")
 bg_black = pygame.image.load("img/dark_board.jpg")
+highlight_green = pygame.image.load("img/highlight_green.png")
 black_rook = init_piece("img/black_rook.png")
 black_knight = init_piece("img/black_knight.png")
 white_knight = init_piece("img/white_knight.png")
@@ -52,15 +54,17 @@ class Field:
     Top = 0
     Left = 0
     Piece = None
+    Rect = None
     def __init__(self, background, y, x, top, left):
         self.Background = background
         self.X = x
         self.Y = y
         self.Top = top
         self.Left = left
+        self.Rect = (self.Left, self.Top, self.Left + FIELD_SIZE, self.Top + FIELD_SIZE)
         pass
     def Str(self):
-        return str(self.X+1) + str(self.Y+1)
+        return str(chr(ord('A') + self.Y)) + str(self.X + 1)
     def SetPiece(self, piece):
         self.Piece = piece
 
@@ -118,12 +122,16 @@ def setup_board():
     global white_queen
     global white_king
     global bg_white
+    global highlight_green
     global bg_black
     FIELD_SIZE  = int(BOARD_SIZE/8)
     SIDE_SIZE   = 50
     BORDER_SIZE = 2
     bg_white = pygame.transform.scale(bg_white, (FIELD_SIZE, FIELD_SIZE))
     bg_black = pygame.transform.scale(bg_black, (FIELD_SIZE, FIELD_SIZE))
+    highlight_green = pygame.transform.scale(highlight_green, (FIELD_SIZE, FIELD_SIZE))
+    highlight_green.set_colorkey(WHITE)
+
     even = True
     for y in range(8):
         row = []
@@ -138,7 +146,7 @@ def setup_board():
         board.append(row)
     pass
 
-def mouse_over_board():
+def get_coord():
     pos = pygame.mouse.get_pos()
     x = -1
     y = -1
@@ -149,6 +157,37 @@ def mouse_over_board():
         y = int((pos[1] - SIDE_SIZE) / FIELD_SIZE)
         #x = chr(ord('A') + x)
         return x, y
+
+def is_black(piece):
+    return (piece == black_pawn or piece == black_knight or
+        piece == black_bishop or piece == black_rook or
+        piece == black_queen or piece == black_king)
+
+def is_white(piece):
+    return (piece != None and not is_black(piece))
+
+def get_valid_moves(board, piece, moving_from):
+    x, y = moving_from
+    valid_moves = []
+    if piece == white_pawn and y < 7:
+        if x < 7 and is_black(board[y + 1][x + 1].Piece):
+            valid_moves.append((x + 1, y + 1))
+        if x > 0 and is_black(board[y + 1][x - 1].Piece):
+            valid_moves.append((x - 1, y + 1))
+        if board[y + 1][x].Piece == None:
+            valid_moves.append((x, (y + 1)))
+            if y == 1 and board[y + 2][x].Piece == None:
+                valid_moves.append((x, (y + 2)))
+    if piece == black_pawn and y > 0:
+        if x < 7 and is_white(board[y - 1][x + 1].Piece):
+            valid_moves.append((x + 1, y - 1))
+        if x > 0 and is_white(board[y - 1][x - 1].Piece):
+            valid_moves.append((x - 1, y - 1))
+        if board[y - 1][x].Piece == None:
+            valid_moves.append((x, (y - 1)))
+            if y == 6 and board[y - 2][x].Piece == None:
+                valid_moves.append((x, (y - 2)))
+    return valid_moves
 
 def main():
     global BOARD_SIZE
@@ -169,14 +208,15 @@ def main():
     loop_count = 0
     moving_piece = None
     moved_from = -1, -1
+    valid_moves = []
     fps = 0
     while running:
         loop_count = loop_count + 1
         cur_time = time.time_ns() / (10 ** 9)
         if (cur_time - lastTime) > 1.0:
-            pos = mouse_over_board()
+            pos = get_coord()
             field_str = str(chr(ord('A') + pos[0])) + str(pos[1])
-            print("\r%5d fps mouse: %5s, %5s, %4s" %(loop_count, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1], field_str), end = '')
+            #print("\r%5d fps mouse: %5s, %5s, %4s" %(loop_count, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1], field_str), end = '')
             lastTime = time.time_ns() / (10 ** 9)
             fps = loop_count
             loop_count = 0
@@ -215,23 +255,30 @@ def main():
             if event.type == pygame.KEYUP:
                 print("key up")
             if event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = mouse_over_board()
+                x, y = get_coord()
                 if x >= 0 and y >= 0 and x <= 7 and y <= 7 and board[y][x] != None:
                     moving_piece = board[y][x].Piece
-                    moved_from = y, x
+                    moved_from = x, y
                     board[y][x].Piece = None
-                    print("\tmouse down on %s" %(board[y][x].Str()))
+                    print("\tmouse down on %s (%d, %d)" %(board[y][x].Str(), x, y))
+                    valid_moves = get_valid_moves(board, moving_piece, moved_from)
+                    print("valid moves: ", end = '')
+                    print(valid_moves)
+
             if event.type == pygame.MOUSEBUTTONUP:
-                x, y = mouse_over_board()
+                x, y = get_coord()
                 valid_move = True
-                if valid_move:
+                valid_moves = get_valid_moves(board, moving_piece, moved_from)
+                if (x, y) in valid_moves:
                     board[y][x].Piece = moving_piece
                 else:
-                    board[moved_from[0]][moved_from[1]].Piece = moving_piece
+                    board[moved_from[1]][moved_from[0]].Piece = moving_piece
                 moved_from = -1, -1
                 moving_piece = None
-            #    print("mouse up")
-            #if event.type == pygame.MOUSEMOTION:
+                valid_moves = []
+
+        for f in valid_moves:
+            screen.blit(highlight_green, (board[f[1]][f[0]].Top, board[f[1]][f[0]].Left))
 
         for row in board:
             for field in row:
