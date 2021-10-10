@@ -16,13 +16,17 @@ def init_piece(filename):
 def draw_piece(piece, x, y):
     screen.blit(piece, (SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y))
 
-
+VERB_LEVEL  = 1
 BOARD_SIZE  = 800
 FIELD_SIZE  = int(BOARD_SIZE/8)
 SIDE_SIZE   = 50
 BORDER_SIZE = 2
 WHITE       = (255, 255, 255)
 GREEN       = (0,   255, 0)
+
+def LOG(v, str, end = '\n'):
+    if v < VERB_LEVEL:
+        print(str, end)
 
 pygame.font.init()
 myfont = pygame.font.SysFont('Comic Sans MS', 30)
@@ -65,8 +69,32 @@ class Field:
         pass
     def Str(self):
         return str(chr(ord('A') + self.Y)) + str(self.X + 1)
-    def SetPiece(self, piece):
-        self.Piece = piece
+    def StrPiece(self):
+        if self.Piece == white_pawn:
+            return "white_pawn"
+        if self.Piece == white_knight:
+            return "white_knight"
+        if self.Piece == white_bishop:
+            return "white_bishop"
+        if self.Piece == white_rook:
+            return "white_rook"
+        if self.Piece == white_queen:
+            return "white_queen"
+        if self.Piece == white_king:
+            return "white_king"
+        if self.Piece == black_pawn:
+            return "black_pawn"
+        if self.Piece == black_knight:
+            return "black_knight"
+        if self.Piece == black_bishop:
+            return "black_bishop"
+        if self.Piece == black_rook:
+            return "black_rook"
+        if self.Piece == black_queen:
+            return "black_queen"
+        if self.Piece == black_king:
+            return "black_king"
+        return "None"
 
 board = []
 
@@ -85,25 +113,25 @@ def draw_piece(piece, x, y):
     screen.blit(piece, (SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y))
 
 def init_board():
-    board[0][0].SetPiece(white_rook)
-    board[0][1].SetPiece(white_knight)
-    board[0][2].SetPiece(white_bishop)
-    board[0][3].SetPiece(white_queen)
-    board[0][4].SetPiece(white_king)
-    board[0][5].SetPiece(white_bishop)
-    board[0][6].SetPiece(white_knight)
-    board[0][7].SetPiece(white_rook)
+    board[0][0].Piece = white_rook
+    board[0][1].Piece = white_knight
+    board[0][2].Piece = white_bishop
+    board[0][3].Piece = white_queen
+    board[0][4].Piece = white_king
+    board[0][5].Piece = white_bishop
+    board[0][6].Piece = white_knight
+    board[0][7].Piece = white_rook
     for x in range(8):
-        board[1][x].SetPiece(white_pawn)
-        board[6][x].SetPiece(black_pawn)
-    board[7][0].SetPiece(black_rook)
-    board[7][1].SetPiece(black_knight)
-    board[7][2].SetPiece(black_bishop)
-    board[7][3].SetPiece(black_queen)
-    board[7][4].SetPiece(black_king)
-    board[7][5].SetPiece(black_bishop)
-    board[7][6].SetPiece(black_knight)
-    board[7][7].SetPiece(black_rook)
+        board[1][x].Piece = white_pawn
+        board[6][x].Piece = black_pawn
+    board[7][0].Piece = black_rook
+    board[7][1].Piece = black_knight
+    board[7][2].Piece = black_bishop
+    board[7][3].Piece = black_queen
+    board[7][4].Piece = black_king
+    board[7][5].Piece = black_bishop
+    board[7][6].Piece = black_knight
+    board[7][7].Piece = black_rook
 
 def setup_board():
     global FIELD_SIZE
@@ -139,9 +167,9 @@ def setup_board():
         for x in range(8):
             even = not even
             if even:
-                field = Field(bg_white, y, x, SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
+                field = Field(bg_white, x, y,SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
             else:
-                field = Field(bg_black, y, x, SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
+                field = Field(bg_black, x, y, SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
             row.append(field)
         board.append(row)
     pass
@@ -166,22 +194,22 @@ def is_black(piece):
 def is_white(piece):
     return (piece != None and not is_black(piece))
 
-def get_valid_moves(board, piece, moving_from):
+def get_valid_moves(board, piece, moving_from, en_passant):
     x, y = moving_from
     valid_moves = []
     if piece == white_pawn and y < 7:
-        if x < 7 and is_black(board[y + 1][x + 1].Piece):
+        if x < 7 and is_black(board[y + 1][x + 1].Piece) or en_passant == (x + 1, y + 1):
             valid_moves.append((x + 1, y + 1))
-        if x > 0 and is_black(board[y + 1][x - 1].Piece):
+        if x > 0 and is_black(board[y + 1][x - 1].Piece) or en_passant == (x - 1, y + 1):
             valid_moves.append((x - 1, y + 1))
         if board[y + 1][x].Piece == None:
             valid_moves.append((x, (y + 1)))
             if y == 1 and board[y + 2][x].Piece == None:
                 valid_moves.append((x, (y + 2)))
     if piece == black_pawn and y > 0:
-        if x < 7 and is_white(board[y - 1][x + 1].Piece):
+        if x < 7 and is_white(board[y - 1][x + 1].Piece) or en_passant == (x + 1, y - 1):
             valid_moves.append((x + 1, y - 1))
-        if x > 0 and is_white(board[y - 1][x - 1].Piece):
+        if x > 0 and is_white(board[y - 1][x - 1].Piece) or en_passant == (x - 1, y - 1):
             valid_moves.append((x - 1, y - 1))
         if board[y - 1][x].Piece == None:
             valid_moves.append((x, (y - 1)))
@@ -201,7 +229,7 @@ def main():
     setup_board()
     init_board()
     info = pygame.display.get_wm_info()
-    print(info)
+    LOG(2, info)
     running = True
     lastRect = GetWindowRect(hwnd)
     lastTime = time.time_ns() / (10 ** 9)
@@ -209,6 +237,9 @@ def main():
     moving_piece = None
     moved_from = -1, -1
     valid_moves = []
+    en_passant = None
+    show_fps = False
+    verbose = 0
     fps = 0
     while running:
         loop_count = loop_count + 1
@@ -216,7 +247,8 @@ def main():
         if (cur_time - lastTime) > 1.0:
             pos = get_coord()
             field_str = str(chr(ord('A') + pos[0])) + str(pos[1])
-            #print("\r%5d fps mouse: %5s, %5s, %4s" %(loop_count, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1], field_str), end = '')
+            if show_fps:
+                print("\r%5d fps mouse: %5s, %5s, %4s" %(loop_count, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1], field_str), end = '')
             lastTime = time.time_ns() / (10 ** 9)
             fps = loop_count
             loop_count = 0
@@ -227,23 +259,23 @@ def main():
             (SIDE_SIZE - BORDER_SIZE, SIDE_SIZE - BORDER_SIZE, BOARD_SIZE + BORDER_SIZE * 2, BOARD_SIZE + BORDER_SIZE * 2) )
         rect = GetWindowRect(hwnd)
         if rect.left != lastRect.left and rect.top != lastRect.top:
-            print("\rrect: %d %d, lastrec: %d %d" %(rect.left, rect.top, lastRect.left, lastRect.top), end = '\n')
+            LOG(2, "\rrect: %d %d, lastrec: %d %d" %(rect.left, rect.top, lastRect.left, lastRect.top), end = '\n')
             lastRect = rect
         pos = mouse.position
 
         for row in board:
             for field in row:
                 screen.blit(field.Background, (field.Top, field.Left))
-            textsurface = myfont.render(chr(ord('A') + field.Y), False, (0, 0, 0))
-            screen.blit(textsurface, (80 + FIELD_SIZE * field.Y, 0))
-            textsurface = myfont.render(chr(ord('1') + field.Y), False, (0, 0, 0))
-            screen.blit(textsurface, (20, 80 + FIELD_SIZE * field.Y))
+            textsurface = myfont.render(chr(ord('1') + field.X), False, (0, 0, 0))
+            screen.blit(textsurface, (80 + FIELD_SIZE * field.X, 0))
+            textsurface = myfont.render(chr(ord('A') + field.X), False, (0, 0, 0))
+            screen.blit(textsurface, (20, 80 + FIELD_SIZE * field.X))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                print("key down: %d %d" %(event.key, event.mod))
+                LOG(2, "key down: %d %d" %(event.key, event.mod))
                 if event.key == 27:
                     exit(0)
                 if event.key == 270:  # +
@@ -253,24 +285,45 @@ def main():
                     BOARD_SIZE = BOARD_SIZE - 10
                     setup_board()
             if event.type == pygame.KEYUP:
-                print("key up")
+                LOG(2, "key up")
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = get_coord()
                 if x >= 0 and y >= 0 and x <= 7 and y <= 7 and board[y][x] != None:
                     moving_piece = board[y][x].Piece
                     moved_from = x, y
                     board[y][x].Piece = None
-                    print("\tmouse down on %s (%d, %d)" %(board[y][x].Str(), x, y))
-                    valid_moves = get_valid_moves(board, moving_piece, moved_from)
-                    print("valid moves: ", end = '')
-                    print(valid_moves)
-
+                    LOG(2, "\tmouse down on %s (%d, %d)" %(board[y][x].Str(), x, y))
+                    valid_moves = get_valid_moves(board, moving_piece, moved_from, en_passant)
+                    LOG(2, "valid moves: ", end = '')
+                    LOG(2, valid_moves)
             if event.type == pygame.MOUSEBUTTONUP:
                 x, y = get_coord()
-                valid_move = True
-                valid_moves = get_valid_moves(board, moving_piece, moved_from)
+                #valid_moves = get_valid_moves(board, moving_piece, moved_from, en_passant)
                 if (x, y) in valid_moves:
                     board[y][x].Piece = moving_piece
+                    if moving_piece == white_pawn and y == 7:
+                        board[y][x].Piece = white_queen
+                    if moving_piece == black_pawn and y == 0:
+                        board[y][x].Piece = black_queen
+                    if moving_piece == black_pawn and moved_from[1] == 3 and en_passant == (x, y):
+                        print("En Passant!")
+                        if board[3][x].Piece == white_pawn:
+                            board[3][x].Piece = None
+                        else:
+                            print("Invalid condition for En Passant! ")
+                    if moving_piece == white_pawn and moved_from[1] == 4 and en_passant == (x, y):
+                        print("En Passant!!")
+                        if board[4][x].Piece == black_pawn:
+                            board[4][x].Piece = None
+                        else:
+                            print("Invalid condition for en passant!")
+                    if moving_piece == white_pawn and moved_from[1] == 1 and y == 3:
+                        en_passant = x, 2
+                    elif moving_piece == black_pawn and moved_from[1] == 6 and y == 4:
+                        en_passant = x, 5
+                    else:
+                        en_passant = None
+                    print("%s moved from %s to %s" %(board[y][x].StrPiece(), board[moved_from[1]][moved_from[0]].Str(), board[y][x].Str()))
                 else:
                     board[moved_from[1]][moved_from[0]].Piece = moving_piece
                 moved_from = -1, -1
