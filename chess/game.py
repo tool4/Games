@@ -194,27 +194,51 @@ def is_black(piece):
 def is_white(piece):
     return (piece != None and not is_black(piece))
 
+def is_same_color(piece1, piece2):
+    return (is_black(piece1) and is_black(piece2)) or (is_white(piece1) and is_white(piece2))
+
 def get_valid_moves(board, piece, moving_from, en_passant):
     x, y = moving_from
     valid_moves = []
     if piece == white_pawn and y < 7:
-        if x < 7 and is_black(board[y + 1][x + 1].Piece) or en_passant == (x + 1, y + 1):
+        if x < 7 and is_black(board[y + 1][x + 1].Piece) or ( y == 4 and en_passant == (x + 1, y + 1)):
             valid_moves.append((x + 1, y + 1))
-        if x > 0 and is_black(board[y + 1][x - 1].Piece) or en_passant == (x - 1, y + 1):
+        if x > 0 and is_black(board[y + 1][x - 1].Piece) or ( y == 4 and en_passant == (x - 1, y + 1)):
             valid_moves.append((x - 1, y + 1))
         if board[y + 1][x].Piece == None:
             valid_moves.append((x, (y + 1)))
             if y == 1 and board[y + 2][x].Piece == None:
                 valid_moves.append((x, (y + 2)))
     if piece == black_pawn and y > 0:
-        if x < 7 and is_white(board[y - 1][x + 1].Piece) or en_passant == (x + 1, y - 1):
+        if x < 7 and is_white(board[y - 1][x + 1].Piece) or ( y == 3 and en_passant == (x + 1, y - 1)):
             valid_moves.append((x + 1, y - 1))
-        if x > 0 and is_white(board[y - 1][x - 1].Piece) or en_passant == (x - 1, y - 1):
+        if x > 0 and is_white(board[y - 1][x - 1].Piece) or ( y == 3 and en_passant == (x - 1, y - 1)):
             valid_moves.append((x - 1, y - 1))
         if board[y - 1][x].Piece == None:
             valid_moves.append((x, (y - 1)))
             if y == 6 and board[y - 2][x].Piece == None:
                 valid_moves.append((x, (y - 2)))
+    if piece == black_rook or piece == white_rook:
+        for i in range(y):
+            if not is_same_color(piece, board[y - i - 1][x].Piece):
+                valid_moves.append((x, (y - i - 1)))
+            if board[y - i - 1][x].Piece != None:
+                break
+        for i in range(7 - y):
+            if not is_same_color(piece, board[y + i + 1][x].Piece):
+                valid_moves.append((x, (y + i + 1)))
+            if board[y + i + 1][x].Piece != None:
+                break
+        for i in range(x):
+            if not is_same_color(piece, board[y][x - i - 1].Piece):
+                valid_moves.append( (x - i - 1, (y)))
+            if board[y][x - i - 1].Piece != None:
+                break
+        for i in range(7 - x):
+            if not is_same_color(piece, board[y][x + i + 1].Piece):
+                valid_moves.append((x + i + 1, (y)))
+            if board[y][x + i + 1].Piece != None:
+                break
     return valid_moves
 
 def main():
