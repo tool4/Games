@@ -5,7 +5,6 @@ import time
 from ctypes import POINTER, WINFUNCTYPE, windll
 from ctypes.wintypes import BOOL, HWND, RECT
 
-
 def init_piece(filename):
     piece = pygame.image.load(filename)
     piece = pygame.transform.scale(piece, (FIELD_SIZE, FIELD_SIZE))
@@ -25,7 +24,7 @@ WHITE       = (255, 255, 255)
 GREEN       = (0,   255, 0)
 
 def LOG(v, str, end = '\n'):
-    if v < VERB_LEVEL:
+    if v <= VERB_LEVEL:
         print(str, end)
 
 pygame.font.init()
@@ -59,13 +58,13 @@ class Field:
     Left = 0
     Piece = None
     Rect = None
-    def __init__(self, background, y, x, top, left):
+    def __init__(self, background, x, y, left, top):
         self.Background = background
         self.X = x
         self.Y = y
         self.Top = top
         self.Left = left
-        self.Rect = (self.Left, self.Top, self.Left + FIELD_SIZE, self.Top + FIELD_SIZE)
+        self.Rect = (self.Left, self.Top, FIELD_SIZE, FIELD_SIZE)
         pass
     def Str(self):
         return str(chr(ord('A') + self.Y)) + str(self.X + 1)
@@ -147,7 +146,6 @@ def setup_board():
     bg_black = pygame.transform.scale(bg_black, (FIELD_SIZE, FIELD_SIZE))
     highlight_green = pygame.transform.scale(highlight_green, (FIELD_SIZE, FIELD_SIZE))
     highlight_green.set_colorkey(WHITE)
-
     even = True
     for y in range(8):
         row = []
@@ -155,14 +153,14 @@ def setup_board():
         for x in range(8):
             even = not even
             if even:
-                field = Field(bg_white, x, y,SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
+                field = Field(bg_white, x, y, SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
             else:
                 field = Field(bg_black, x, y, SIDE_SIZE + FIELD_SIZE * x, SIDE_SIZE + FIELD_SIZE * y)
             row.append(field)
         board.append(row)
     pass
 
-def get_coord():
+def get_coord(white_player):
     pos = pygame.mouse.get_pos()
     x = -1
     y = -1
@@ -170,8 +168,10 @@ def get_coord():
         return x, y
     else:
         x = int((pos[0] - SIDE_SIZE) / FIELD_SIZE)
-        y = int((pos[1] - SIDE_SIZE) / FIELD_SIZE)
-        #x = chr(ord('A') + x)
+        if white_player:
+            y = 7 - int((pos[1] - SIDE_SIZE) / FIELD_SIZE)
+        else:
+            y = int((pos[1] - SIDE_SIZE) / FIELD_SIZE)
         return x, y
 
 def is_black(piece):
@@ -184,6 +184,11 @@ def is_white(piece):
 
 def is_same_color(piece1, piece2):
     return (is_black(piece1) and is_black(piece2)) or (is_white(piece1) and is_white(piece2))
+
+def add_move_if_valid(board, piece, x, y, valid_moves):
+    if y >= 0 and x >= 0 and x <= 7 and y <= 7:
+        if not is_same_color(piece, board[y][x].Piece):
+            valid_moves.append((x, y))
 
 def find_valid_moves(board, piece, moving_from, en_passant):
     x, y = moving_from
@@ -208,75 +213,51 @@ def find_valid_moves(board, piece, moving_from, en_passant):
                 valid_moves.append((x, (y - 2)))
     if piece == black_rook or piece == white_rook or piece == black_queen or piece == white_queen or piece == black_king or piece == white_king:
         for i in range(y):
-            if not is_same_color(piece, board[y - i - 1][x].Piece):
-                valid_moves.append((x, (y - i - 1)))
+            add_move_if_valid(board, piece, x , y - i - 1, valid_moves)
             if board[y - i - 1][x].Piece != None or piece == black_king or piece == white_king:
                 break
         for i in range(7 - y):
-            if not is_same_color(piece, board[y + i + 1][x].Piece):
-                valid_moves.append((x, (y + i + 1)))
+            add_move_if_valid(board, piece, x , y + i + 1, valid_moves)
             if board[y + i + 1][x].Piece != None or piece == black_king or piece == white_king:
                 break
         for i in range(x):
-            if not is_same_color(piece, board[y][x - i - 1].Piece):
-                valid_moves.append( (x - i - 1, (y)))
+            add_move_if_valid(board, piece, x - i - 1, y, valid_moves)
             if board[y][x - i - 1].Piece != None or piece == black_king or piece == white_king:
                 break
         for i in range(7 - x):
-            if not is_same_color(piece, board[y][x + i + 1].Piece):
-                valid_moves.append((x + i + 1, (y)))
+            add_move_if_valid(board, piece, x + i + 1, y, valid_moves)
             if board[y][x + i + 1].Piece != None or piece == black_king or piece == white_king:
                 break
     if piece == black_bishop or piece == white_bishop or piece == black_queen or piece == white_queen or piece == black_king or piece == white_king:
         for i in range(y):
+            add_move_if_valid(board, piece, x - i - 1, y - i - 1, valid_moves)
             if y - i > 0 and x - i > 0:
-                if not is_same_color(piece, board[y - i - 1][x - i - 1].Piece):
-                    valid_moves.append( (x - i - 1, y - i - 1))
                 if board[y - i - 1][x - i - 1].Piece != None or piece == black_king or piece == white_king:
                     break
         for i in range(y):
+            add_move_if_valid(board, piece, x + i + 1, y - i - 1, valid_moves)
             if y - i > 0 and x + i < 7:
-                if not is_same_color(piece, board[y - i - 1][x + i + 1].Piece):
-                    valid_moves.append( (x + i + 1, y - i - 1))
                 if board[y - i - 1][x + i + 1].Piece != None or piece == black_king or piece == white_king:
                     break
         for i in range(7 - y):
+            add_move_if_valid(board, piece, x + i + 1, y + i + 1, valid_moves)
             if y + i < 7 and x + i < 7:
-                if not is_same_color(piece, board[y + i + 1][x + i + 1].Piece):
-                    valid_moves.append( (x + i + 1, y + i + 1))
                 if board[y + i + 1][x + i + 1].Piece != None or piece == black_king or piece == white_king:
                     break
         for i in range(7 - y):
+            add_move_if_valid(board, piece, x - i - 1, y + i + 1, valid_moves)
             if y + i < 7 and x - i > 0:
-                if not is_same_color(piece, board[y + i + 1][x - i - 1].Piece):
-                    valid_moves.append( (x - i - 1, y + i + 1))
                 if board[y + i + 1][x - i - 1].Piece != None or piece == black_king or piece == white_king:
                     break
     if piece == black_knight or piece == white_knight:
-        if y + 2 <= 7 and x + 1 <= 7:
-            if not is_same_color(piece, board[y + 2][x + 1].Piece):
-                valid_moves.append((x + 1, y + 2))
-        if y + 1 <= 7 and x + 2 <= 7:
-            if not is_same_color(piece, board[y + 1][x + 2].Piece):
-                valid_moves.append((x + 2, y + 1))
-        if y + 2 <= 7 and x - 1 >= 0:
-            if not is_same_color(piece, board[y + 2][x - 1].Piece):
-                valid_moves.append((x - 1, y + 2))
-        if y + 1 <= 7 and x - 2 >= 0:
-            if not is_same_color(piece, board[y + 1][x - 2].Piece):
-                valid_moves.append((x - 2, y + 1))
-        if y - 2 >= 0 and x + 1 <= 7:
-            if not is_same_color(piece, board[y - 2][x + 1].Piece):
-                valid_moves.append((x + 1, y - 2))
-        if y - 1 >= 0 and x + 2 <= 7:
-            if not is_same_color(piece, board[y - 1][x + 2].Piece):
-                valid_moves.append((x + 2, y - 1))
-        if y - 2 >= 0 and x - 1 >= 0:
-            if not is_same_color(piece, board[y - 2][x - 1].Piece):
-                valid_moves.append((x - 1, y - 2))
-        if y - 1 >= 0 and x - 2 >= 0:
-            if not is_same_color(piece, board[y - 1][x - 2].Piece):
-                valid_moves.append((x - 2, y - 1))
+        add_move_if_valid(board, piece, x + 1, y + 2, valid_moves)
+        add_move_if_valid(board, piece, x + 2, y + 1, valid_moves)
+        add_move_if_valid(board, piece, x - 1, y + 2, valid_moves)
+        add_move_if_valid(board, piece, x - 2, y + 1, valid_moves)
+        add_move_if_valid(board, piece, x - 1, y - 2, valid_moves)
+        add_move_if_valid(board, piece, x - 2, y - 1, valid_moves)
+        add_move_if_valid(board, piece, x + 1, y - 2, valid_moves)
+        add_move_if_valid(board, piece, x + 2, y - 1, valid_moves)
     return valid_moves
 
 def main():
@@ -301,13 +282,15 @@ def main():
     valid_moves = []
     en_passant = None
     show_fps = False
+    white_player = True
+    white_moves = True
     verbose = 0
     fps = 0
     while running:
         loop_count = loop_count + 1
         cur_time = time.time_ns() / (10 ** 9)
         if (cur_time - lastTime) > 1.0:
-            pos = get_coord()
+            pos = get_coord(white_player)
             field_str = str(chr(ord('A') + pos[0])) + str(pos[1])
             if show_fps:
                 print("\r%5d fps mouse: %5s, %5s, %4s" %(loop_count, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1], field_str), end = '')
@@ -325,21 +308,15 @@ def main():
             lastRect = rect
         pos = mouse.position
 
-        for row in board:
-            for field in row:
-                screen.blit(field.Background, (field.Top, field.Left))
-            textsurface = myfont.render(chr(ord('1') + field.X), False, (0, 0, 0))
-            screen.blit(textsurface, (80 + FIELD_SIZE * field.X, 0))
-            textsurface = myfont.render(chr(ord('A') + field.X), False, (0, 0, 0))
-            screen.blit(textsurface, (20, 80 + FIELD_SIZE * field.X))
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                LOG(2, "key down: %d %d" %(event.key, event.mod))
-                if event.key == 27:
+                LOG(1, "key down: %d %d" %(event.key, event.mod))
+                if event.key == 27 or event.key == 113: #esc or q
                     exit(0)
+                if event.key == 114: # r
+                    white_player = not white_player
                 if event.key == 270:  # +
                     BOARD_SIZE = BOARD_SIZE + 10
                     setup_board()
@@ -349,8 +326,12 @@ def main():
             if event.type == pygame.KEYUP:
                 LOG(2, "key up")
             if event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = get_coord()
+                x, y = get_coord(white_player)
                 if x >= 0 and y >= 0 and x <= 7 and y <= 7 and board[y][x] != None:
+                    if white_moves and not is_white(board[y][x].Piece):
+                        continue
+                    if not white_moves and not is_black(board[y][x].Piece):
+                        continue
                     moving_piece = board[y][x].Piece
                     moved_from = x, y
                     board[y][x].Piece = None
@@ -359,7 +340,7 @@ def main():
                     LOG(2, "valid moves: ", end = '')
                     LOG(2, valid_moves)
             if event.type == pygame.MOUSEBUTTONUP:
-                x, y = get_coord()
+                x, y = get_coord(white_player)
                 #valid_moves = find_valid_moves(board, moving_piece, moved_from, en_passant)
                 if (x, y) in valid_moves:
                     board[y][x].Piece = moving_piece
@@ -386,19 +367,38 @@ def main():
                     else:
                         en_passant = None
                     print("%s moved from %s to %s" %(board[y][x].StrPiece(), board[moved_from[1]][moved_from[0]].Str(), board[y][x].Str()))
+                    white_moves = not white_moves
                 else:
-                    board[moved_from[1]][moved_from[0]].Piece = moving_piece
+                    if moved_from[1] >= 0 and moved_from[0] >= 0:
+                        board[moved_from[1]][moved_from[0]].Piece = moving_piece
                 moved_from = -1, -1
                 moving_piece = None
                 valid_moves = []
 
+        for row in board:
+            for field in row:
+                screen.blit(field.Background, (field.Left, field.Top))
+            textsurface = myfont.render(chr(ord('1') + field.Y), False, (0, 0, 0))
+            screen.blit(textsurface, (80 + FIELD_SIZE * field.Y, 0))
+            textsurface = myfont.render(chr(ord('A') + field.Y), False, (0, 0, 0))
+            if white_player:
+                screen.blit(textsurface, (20, BOARD_SIZE - 20 - FIELD_SIZE * field.Y))
+            else:
+                screen.blit(textsurface, (20, 80 + FIELD_SIZE * field.Y))
+
         for f in valid_moves:
-            screen.blit(highlight_green, (board[f[1]][f[0]].Top, board[f[1]][f[0]].Left))
+            if white_player:
+                screen.blit(highlight_green, (board[f[1]][f[0]].Left, BOARD_SIZE - board[f[1]][f[0]].Top))
+            else:
+                screen.blit(highlight_green, (board[f[1]][f[0]].Left, board[f[1]][f[0]].Top))
 
         for row in board:
             for field in row:
                 if field.Piece != None:
-                    screen.blit(field.Piece, (field.Top, field.Left))
+                    if white_player:
+                        screen.blit(field.Piece, (field.Left, BOARD_SIZE - field.Top))
+                    else:
+                        screen.blit(field.Piece, (field.Left, field.Top))
 
         if pygame.mouse.get_pressed()[0] and moving_piece != None:
             screen.blit(moving_piece, (pos[0] - rect.left - FIELD_SIZE/2, pos[1] - rect.top - FIELD_SIZE + 10))
