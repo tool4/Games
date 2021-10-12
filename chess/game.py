@@ -50,6 +50,33 @@ white_bishop = init_piece("img/white_bishop.png")
 white_queen = init_piece("img/white_queen.png")
 white_king = init_piece("img/white_king.png")
 
+def PieceStr(piece):
+    if piece == white_pawn:
+        return "white_pawn"
+    if piece == white_knight:
+        return "white_knight"
+    if piece == white_bishop:
+        return "white_bishop"
+    if piece == white_rook:
+        return "white_rook"
+    if piece == white_queen:
+        return "white_queen"
+    if piece == white_king:
+        return "white_king"
+    if piece == black_pawn:
+        return "black_pawn"
+    if piece == black_knight:
+        return "black_knight"
+    if piece == black_bishop:
+        return "black_bishop"
+    if piece == black_rook:
+        return "black_rook"
+    if piece == black_queen:
+        return "black_queen"
+    if piece == black_king:
+        return "black_king"
+    return "None"
+
 class Field:
     Background = None
     X = 0
@@ -67,33 +94,12 @@ class Field:
         self.Rect = (self.Left, self.Top, FIELD_SIZE, FIELD_SIZE)
         pass
     def Str(self):
-        return str(chr(ord('A') + self.Y)) + str(self.X + 1)
+        return str(chr(ord('A') + self.X)) + str(self.Y + 1)
     def StrPiece(self):
-        if self.Piece == white_pawn:
-            return "white_pawn"
-        if self.Piece == white_knight:
-            return "white_knight"
-        if self.Piece == white_bishop:
-            return "white_bishop"
-        if self.Piece == white_rook:
-            return "white_rook"
-        if self.Piece == white_queen:
-            return "white_queen"
-        if self.Piece == white_king:
-            return "white_king"
-        if self.Piece == black_pawn:
-            return "black_pawn"
-        if self.Piece == black_knight:
-            return "black_knight"
-        if self.Piece == black_bishop:
-            return "black_bishop"
-        if self.Piece == black_rook:
-            return "black_rook"
-        if self.Piece == black_queen:
-            return "black_queen"
-        if self.Piece == black_king:
-            return "black_king"
-        return "None"
+        return PieceStr(self.Piece)
+
+def XY_TO_STR(x, y):
+    return str(chr(ord('A') + x)) + str(y + 1)
 
 board = []
 
@@ -162,10 +168,8 @@ def setup_board():
 
 def get_coord(white_player):
     pos = pygame.mouse.get_pos()
-    x = -1
-    y = -1
     if pos[0] < SIDE_SIZE or pos[0] > (SIDE_SIZE + BOARD_SIZE) or pos[1] < SIDE_SIZE or pos[1] > (SIDE_SIZE + BOARD_SIZE):
-        return x, y
+        return -1, -1
     else:
         x = int((pos[0] - SIDE_SIZE) / FIELD_SIZE)
         if white_player:
@@ -185,79 +189,105 @@ def is_white(piece):
 def is_same_color(piece1, piece2):
     return (is_black(piece1) and is_black(piece2)) or (is_white(piece1) and is_white(piece2))
 
-def add_move_if_valid(board, piece, x, y, valid_moves):
+def add_move_if_valid(board, piece, x, y, valid_moves, depth = 0):
+    LOG(2, "add move if valid for %s: %d, %d, (%s) depth: %d" %(PieceStr(piece), x, y, XY_TO_STR(x, y),depth))
     if y >= 0 and x >= 0 and x <= 7 and y <= 7:
         if not is_same_color(piece, board[y][x].Piece):
+            if depth == 0 and (piece == white_king or piece == black_king):
+                #tricky check for a 'check':
+                LOG(2, "<<%s>> %s: <%s>" %(XY_TO_STR(x, y), PieceStr(piece), board[y][x].Piece))
+                saved_piece = board[y][x].Piece
+                if not is_same_color(piece, board[y][x].Piece):
+                    board[y][x].Piece = piece #assume it's taken over by our king
+                for row in board:
+                    for field in row:
+                        if (field.Piece != None) and (not is_same_color(piece, field.Piece)):
+                            attacked_fields = find_valid_moves(board, field.Piece, field.X, field.Y, None, depth + 1)
+                            LOG(2, "[%s] - %s (%s):" %(XY_TO_STR(x, y), field.StrPiece(), field.Str()))
+                            LOG(2, "\t", end = '')
+                            for f in attacked_fields:
+                                LOG(2, "%s " %XY_TO_STR(f[0], f[1]), end = '')
+                            LOG(2, "")
+                            if (x, y) in attacked_fields:
+                                board[y][x].Piece = saved_piece
+                                return
+                board[y][x].Piece = saved_piece
             valid_moves.append((x, y))
 
-def find_valid_moves(board, piece, moving_from, en_passant):
-    x, y = moving_from
+def print_board(board):
+    for row in board:
+        for field in row:
+            if field.Piece != None:
+                print("%s: %12s (%d, %d)" %(field.Str(), field.StrPiece(), field.X, field.Y))
+
+def find_valid_moves(board, piece, x, y, en_passant, depth):
+    LOG(2, "find_valid_moves for %s: %d, %d, (%s) depth: %d" %(PieceStr(piece), x, y, XY_TO_STR(x, y),depth))
     valid_moves = []
     if piece == white_pawn and y < 7:
-        if x < 7 and is_black(board[y + 1][x + 1].Piece) or (y == 4 and en_passant == (x + 1, y + 1)):
+        if x < 7 and (is_black(board[y + 1][x + 1].Piece) or (y == 4 and en_passant == (x + 1, y + 1))):
             valid_moves.append((x + 1, y + 1))
-        if x > 0 and is_black(board[y + 1][x - 1].Piece) or (y == 4 and en_passant == (x - 1, y + 1)):
+        if x > 0 and (is_black(board[y + 1][x - 1].Piece) or (y == 4 and en_passant == (x - 1, y + 1))):
             valid_moves.append((x - 1, y + 1))
-        if board[y + 1][x].Piece == None:
+        if depth == 0 and board[y + 1][x].Piece == None:
             valid_moves.append((x, (y + 1)))
             if y == 1 and board[y + 2][x].Piece == None:
                 valid_moves.append((x, (y + 2)))
     if piece == black_pawn and y > 0:
-        if x < 7 and is_white(board[y - 1][x + 1].Piece) or (y == 3 and en_passant == (x + 1, y - 1)):
+        if x < 7 and (is_white(board[y - 1][x + 1].Piece) or (y == 3 and en_passant == (x + 1, y - 1))):
             valid_moves.append((x + 1, y - 1))
-        if x > 0 and is_white(board[y - 1][x - 1].Piece) or (y == 3 and en_passant == (x - 1, y - 1)):
+        if x > 0 and (is_white(board[y - 1][x - 1].Piece) or (y == 3 and en_passant == (x - 1, y - 1))):
             valid_moves.append((x - 1, y - 1))
-        if board[y - 1][x].Piece == None:
+        if depth == 0 and board[y - 1][x].Piece == None:
             valid_moves.append((x, (y - 1)))
             if y == 6 and board[y - 2][x].Piece == None:
                 valid_moves.append((x, (y - 2)))
     if piece == black_rook or piece == white_rook or piece == black_queen or piece == white_queen or piece == black_king or piece == white_king:
         for i in range(y):
-            add_move_if_valid(board, piece, x , y - i - 1, valid_moves)
+            add_move_if_valid(board, piece, x , y - i - 1, valid_moves, depth)
             if board[y - i - 1][x].Piece != None or piece == black_king or piece == white_king:
                 break
         for i in range(7 - y):
-            add_move_if_valid(board, piece, x , y + i + 1, valid_moves)
+            add_move_if_valid(board, piece, x , y + i + 1, valid_moves, depth)
             if board[y + i + 1][x].Piece != None or piece == black_king or piece == white_king:
                 break
         for i in range(x):
-            add_move_if_valid(board, piece, x - i - 1, y, valid_moves)
+            add_move_if_valid(board, piece, x - i - 1, y, valid_moves, depth)
             if board[y][x - i - 1].Piece != None or piece == black_king or piece == white_king:
                 break
         for i in range(7 - x):
-            add_move_if_valid(board, piece, x + i + 1, y, valid_moves)
+            add_move_if_valid(board, piece, x + i + 1, y, valid_moves, depth)
             if board[y][x + i + 1].Piece != None or piece == black_king or piece == white_king:
                 break
     if piece == black_bishop or piece == white_bishop or piece == black_queen or piece == white_queen or piece == black_king or piece == white_king:
         for i in range(y):
-            add_move_if_valid(board, piece, x - i - 1, y - i - 1, valid_moves)
+            add_move_if_valid(board, piece, x - i - 1, y - i - 1, valid_moves, depth)
             if y - i > 0 and x - i > 0:
                 if board[y - i - 1][x - i - 1].Piece != None or piece == black_king or piece == white_king:
                     break
         for i in range(y):
-            add_move_if_valid(board, piece, x + i + 1, y - i - 1, valid_moves)
+            add_move_if_valid(board, piece, x + i + 1, y - i - 1, valid_moves, depth)
             if y - i > 0 and x + i < 7:
                 if board[y - i - 1][x + i + 1].Piece != None or piece == black_king or piece == white_king:
                     break
         for i in range(7 - y):
-            add_move_if_valid(board, piece, x + i + 1, y + i + 1, valid_moves)
+            add_move_if_valid(board, piece, x + i + 1, y + i + 1, valid_moves, depth)
             if y + i < 7 and x + i < 7:
                 if board[y + i + 1][x + i + 1].Piece != None or piece == black_king or piece == white_king:
                     break
         for i in range(7 - y):
-            add_move_if_valid(board, piece, x - i - 1, y + i + 1, valid_moves)
+            add_move_if_valid(board, piece, x - i - 1, y + i + 1, valid_moves, depth)
             if y + i < 7 and x - i > 0:
                 if board[y + i + 1][x - i - 1].Piece != None or piece == black_king or piece == white_king:
                     break
     if piece == black_knight or piece == white_knight:
         add_move_if_valid(board, piece, x + 1, y + 2, valid_moves)
         add_move_if_valid(board, piece, x + 2, y + 1, valid_moves)
+        add_move_if_valid(board, piece, x + 1, y - 2, valid_moves)
+        add_move_if_valid(board, piece, x + 2, y - 1, valid_moves)
         add_move_if_valid(board, piece, x - 1, y + 2, valid_moves)
         add_move_if_valid(board, piece, x - 2, y + 1, valid_moves)
         add_move_if_valid(board, piece, x - 1, y - 2, valid_moves)
         add_move_if_valid(board, piece, x - 2, y - 1, valid_moves)
-        add_move_if_valid(board, piece, x + 1, y - 2, valid_moves)
-        add_move_if_valid(board, piece, x + 2, y - 1, valid_moves)
     return valid_moves
 
 def main():
@@ -271,6 +301,7 @@ def main():
     GetWindowRect = prototype(("GetWindowRect", windll.user32), paramflags)
     setup_board()
     init_board()
+    print_board(board)
     info = pygame.display.get_wm_info()
     LOG(2, info)
     running = True
@@ -335,13 +366,12 @@ def main():
                     moving_piece = board[y][x].Piece
                     moved_from = x, y
                     board[y][x].Piece = None
-                    LOG(2, "\tmouse down on %s (%d, %d)" %(board[y][x].Str(), x, y))
-                    valid_moves = find_valid_moves(board, moving_piece, moved_from, en_passant)
+                    LOG(2, "\tmouse down on %s (%d, %d) (%s)" %(board[y][x].Str(), x, y, XY_TO_STR(x, y)))
+                    valid_moves = find_valid_moves(board, moving_piece, x, y, en_passant, 0)
                     LOG(2, "valid moves: ", end = '')
                     LOG(2, valid_moves)
             if event.type == pygame.MOUSEBUTTONUP:
                 x, y = get_coord(white_player)
-                #valid_moves = find_valid_moves(board, moving_piece, moved_from, en_passant)
                 if (x, y) in valid_moves:
                     board[y][x].Piece = moving_piece
                     if moving_piece == white_pawn and y == 7:
@@ -366,7 +396,7 @@ def main():
                         en_passant = x, 5
                     else:
                         en_passant = None
-                    print("%s moved from %s to %s" %(board[y][x].StrPiece(), board[moved_from[1]][moved_from[0]].Str(), board[y][x].Str()))
+                    LOG(1, "%s moved from %s to %s" %(PieceStr(board[y][x].Piece), board[moved_from[1]][moved_from[0]].Str(), board[y][x].Str()), end = '')
                     white_moves = not white_moves
                 else:
                     if moved_from[1] >= 0 and moved_from[0] >= 0:
@@ -378,9 +408,9 @@ def main():
         for row in board:
             for field in row:
                 screen.blit(field.Background, (field.Left, field.Top))
-            textsurface = myfont.render(chr(ord('1') + field.Y), False, (0, 0, 0))
-            screen.blit(textsurface, (80 + FIELD_SIZE * field.Y, 0))
             textsurface = myfont.render(chr(ord('A') + field.Y), False, (0, 0, 0))
+            screen.blit(textsurface, (80 + FIELD_SIZE * field.Y, 0))
+            textsurface = myfont.render(chr(ord('1') + field.Y), False, (0, 0, 0))
             if white_player:
                 screen.blit(textsurface, (20, BOARD_SIZE - 20 - FIELD_SIZE * field.Y))
             else:
